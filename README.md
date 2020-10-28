@@ -3,7 +3,10 @@
 
 An unofficial rich presence that let you to have Fortnite RPC regardless of the platform on which you play. Made with pypresence and fortnitepy.
 Its needed a PC (obviously with discord installed) and an unused epic account (used to log in and monitore your status)
-![preview](https://media.discordapp.net/attachments/765988053943844884/771051636348158002/unknown.png)![preview playing](https://media.discordapp.net/attachments/765988053943844884/771052505089966162/unknown.png)
+
+![preview](https://media.discordapp.net/attachments/765988053943844884/771051636348158002/unknown.png)
+
+![preview playing](https://media.discordapp.net/attachments/765988053943844884/771052505089966162/unknown.png)
 
 
 ### Setup
