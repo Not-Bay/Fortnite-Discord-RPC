@@ -1,5 +1,7 @@
 from fortnitepy.ext import commands as fncommands
 from pypresence import AioPresence
+from functools import partial
+import datetime
 import time
 import crayons
 import fortnitepy
@@ -7,14 +9,47 @@ import asyncio
 import json
 import sys
 
+class data():
+    def __init__(self):
+        self.user = None
+        self.online = False
+        self.before_online = False
+        self.after_playing = None
+        self.before_playing = None
+        self.playing_timestamp = None
+
+userdata = data()
+
 client_id = '770037031773798410'
 RPC = AioPresence(client_id=client_id, loop=asyncio.get_event_loop())
+
+def log(content, mode):
+
+    now = datetime.datetime.now().strftime('[%H:%M:%S]')
+
+    if mode == 'rpc':
+        print(f'{now} {crayons.green("[RPC]")} {content}')
+
+    elif mode == 'warn':
+        print(f'{now} {crayons.yellow("[WARN]")} {content}')
+
+    elif mode == 'error':
+        print(f'{now} {crayons.red("[ERROR]")} {content}')
+    
+    elif mode == 'info':
+        print(f'{now} {crayons.white("[INFO]")} {content}')
+
+    elif mode == 'debug':
+        if settings['debug'] == True:
+            print(f'{now} {crayons.blue("[DEBUG]")} {content}')
+
 
 with open('device_auths.json', 'r', encoding='utf-8') as d:
     auths = json.load(d)
 
 with open('settings.json', 'r', encoding='utf-8') as s:
     settings = json.load(s)
+
 
 client = fncommands.Bot(
     command_prefix='',
@@ -29,85 +64,157 @@ client = fncommands.Bot(
 @client.event
 async def event_device_auth_generate(details, email):
 
-    print(crayons.yellow('[INFO] Device auths generated'))
-
     with open('device_auths.json', 'w', encoding='utf-8') as fw:
         auths = json.dump(details, fw, indent=4)
+    log('Device auths generated and saved', 'debug')
+
+@client.event
+async def event_ready():
+    log('Fortnitepy client ready', 'debug')
+
+    try:
+        await RPC.connect()
+        log('Connected to discord', 'rpc')
+    except Exception as e:
+        client.loop.create_task(try_to_connect_rpc())
+
+    await client.party.edit_and_keep(partial(client.party.set_privacy, privacy=fortnitepy.PartyPrivacy.PRIVATE))
+    await client.set_presence(status='https://www.github.com/BayGamerYT/Fortnite-Discord-RPC')
+
+    flag = False
+    for friend in client.friends:
+        if friend.display_name == settings['Owner']:
+            userdata.user = friend
+            await update_rpc(friend.last_presence)
+            flag = True
+            break
+    
+    if flag == False:
+        log(f'The owner are not a friend. Add: "{client.user.display_name}"', 'warn')
+        flag2 = False
+        for pendingfriend in client.pending_friends:
+            if pendingfriend.display_name == settings['Owner']:
+                await pendingfriend.accept()
+                await update_rpc(pendingfriend.last_presence)
+                log('Pending friend request from the owner accepted', 'info')
+                break
+
+    client.loop.create_task(check_user_online())
+    
+
+@client.event
+async def event_friend_add(friend):
+    
+    if friend.display_name == settings['Owner']:
+        userdata.user == friend
+        log('Owner are now friend of the bot', 'info')
+
 
 @client.event
 async def event_friend_request(request):
 
-    if request.author.display_name == settings['Owner']:
+    if request.display_name == settings['Owner']:
         await request.accept()
-
-@client.event
-async def event_ready():
-
-    await RPC.connect()
-    print(crayons.green('RPC connected'))
-
-    for friend in client.friends:
-        if friend.display_name == settings['Owner']:
-            await update_rpc(friend.last_presence)
-            break
-
-class data():
-    def __init__(self):
-        self.before_playing = False
-        self.after_playing = False
-        self.timestamp = None
-
-before_playing = False
-after_playing = False
-playing_timestamp = None
+        log('Friend request from the owner accepted', 'info')
 
 @client.event
 async def event_friend_presence(before, after):
 
+    global userdata
+
     if after.friend.display_name == settings['Owner']:
-        if after.friend.is_online == False:
-            await RPC.clear()
 
-        else:
-            global before_playing
-            global after_playing
-            global playing_timestamp
+        userdata.before_playing = False if before == None else before.playing
+        userdata.after_playing = False if after == None else after.playing
+        userdata.playing_timestamp = int(time.time()) if userdata.after_playing == True and userdata.before_playing == False else userdata.playing_timestamp if userdata.before_playing == True and userdata.after_playing == True else None
 
+        try:
+            await update_rpc(after)
+        except Exception as e:
+            log(f'{e}', 'error')
 
-            before_playing = False if before == None else before.playing
-            after_playing = False if after == None else after.playing
-            playing_timestamp = int(time.time()) if after_playing == True and before_playing == False else playing_timestamp if before_playing == True and after_playing == True else None
-
-
-            try:
-                await update_rpc(after)
-            except:
-                pass
 
 async def update_rpc(presence):
 
     if presence == None:
-        await RPC.clear()
-        return
+        try:
+            await RPC.clear()
+        except Exception as e:
+            log(f'Failed to clear RPC: {e}', 'error')
 
-    platform = presence.platform
-    await RPC.update(
-        details = presence.status,
-        state = 'Windows' if platform == fortnitepy.Platform.WINDOWS else 'Mac' if platform == fortnitepy.Platform.MAC else 'PlayStation 4' if platform == fortnitepy.Platform.PLAYSTATION else 'Xbox' if platform == fortnitepy.Platform.XBOX else 'Nintendo Switch' if platform == fortnitepy.Platform.SWITCH else 'IOS' if platform == fortnitepy.Platform.IOS else 'Android' if platform == fortnitepy.Platform.ANDROID else '',
-        start = playing_timestamp,
-        large_image = 'fortnite_icon',
-        large_text = 'Fortnite Discord RPC',
-        party_id = presence.party.id if presence.party != None else None,
-        join = presence.session_id if presence.joinable == True else None
-        )
+    else:
+        if presence.status != None:
+            try:
+                await RPC.update(
+                    details = presence.status,
+                    state = 'Windows' if presence.platform == fortnitepy.Platform.WINDOWS else 'Mac' if presence.platform == fortnitepy.Platform.MAC else 'PlayStation 4' if presence.platform == fortnitepy.Platform.PLAYSTATION else 'Xbox' if presence.platform == fortnitepy.Platform.XBOX else 'Nintendo Switch' if presence.platform == fortnitepy.Platform.SWITCH else 'iOS' if presence.platform == fortnitepy.Platform.IOS else 'Android' if presence.platform == fortnitepy.Platform.ANDROID else None,
+                    start = userdata.playing_timestamp,
+                    large_image = 'fortnite_icon',
+                    large_text = 'Fortnite Discord RPC',
+                    party_id = presence.party.id if presence.party != None else None,
+                    join = presence.session_id if presence.joinable == True else None
+                )
+            except Exception as e:
+                log(f'Failed to update RPC: {e}', 'error')
+
+async def check_user_online():
+
+    log('Check user online task started', 'debug')
+
+    while True:
+
+        global userdata
+
+        if userdata.user == None:
+            flag = False
+            for friend in client.friends:
+                if friend.display_name == settings['Owner']:
+                    flag = True
+                    break
+            if flag == False:
+                await asyncio.sleep(3)
+        
+        else:
+
+            user = client.get_friend(userdata.user.id)
+
+            if user.is_online():
+                userdata.online = True
+                userdata.before_online = True
+            else:
+                userdata.online = False
+                await update_rpc(None)
+                userdata.before_online = False
+
+            await asyncio.sleep(5)
+    log('User online task finished', 'debug')
+
+async def try_to_connect_rpc():
+
+    log('Reconnect RPC loop task started', 'debug')
+
+    while True:
+
+        try:
+            await RPC.connect()
+            log('Connected to discord', 'rpc')
+            break
+        except:
+            await asyncio.sleep(5)
+
+    log('Reconnect RPC loop task finished', 'debug')
 
 
 if __name__ == "__main__":
+    print(crayons.white('Fortnite Discord RPC', bold=True))
+    print(crayons.white('Made by BayGamerYT\n'))
     try:
+        log('Starting fortnitepy client', 'debug')
         loop = asyncio.get_event_loop()
-
         loop.create_task(client.start())
         loop.run_forever()
     except KeyboardInterrupt:
+        log('Keyboard interruption', 'info')
+        log('Disconnected', 'rpc')
         print(crayons.red('Closing...'))
         sys.exit()
