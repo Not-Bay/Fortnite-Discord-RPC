@@ -1,4 +1,3 @@
-from fortnitepy.ext import commands as fncommands
 from pypresence import AioPresence
 from functools import partial
 import datetime
@@ -7,7 +6,7 @@ import crayons
 import fortnitepy
 import asyncio
 import json
-import sys
+import sys 
 
 class data():
     def __init__(self):
@@ -51,8 +50,7 @@ with open('settings.json', 'r', encoding='utf-8') as s:
     settings = json.load(s)
 
 
-client = fncommands.Bot(
-    command_prefix='',
+client = fortnitepy.Client(
     auth=fortnitepy.AdvancedAuth(
         device_id=auths['device_id'],
         account_id=auths['account_id'],
