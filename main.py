@@ -214,7 +214,7 @@ async def try_to_connect_rpc():
 
 async def check_update():
 
-    log('Checking updates...', 'info')
+    log('Checking for updates...', 'info')
 
     files_to_check = ['main.py', 'requirements.txt', 'install.bat', 'start.bat', 'README.md', 'LICENSE']
     files_with_changes = []
@@ -259,10 +259,15 @@ async def check_update():
             log('Restarting...', 'info')
             if sys.platform == 'win32':
                 os.system('py -3 -m pip install -r requirements.txt\npy main.py')
+                await asyncio.sleep(3)
                 sys.exit()
             else:
                 os.system('python3 -m pip install -r requirements.txt\n python3 main.py')
+                await asyncio.sleep(3)
                 sys.exit()
+                
+    else:
+        log('No updates found', 'info')
 
 
 if __name__ == "__main__":
