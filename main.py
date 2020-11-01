@@ -1,5 +1,7 @@
 from pypresence import AioPresence
 from functools import partial
+import requests
+import pyautogui
 import datetime
 import time
 import crayons
@@ -7,6 +9,7 @@ import fortnitepy
 import asyncio
 import json
 import sys 
+import os
 
 class data():
     def __init__(self):
@@ -77,7 +80,7 @@ async def event_ready():
         client.loop.create_task(try_to_connect_rpc())
 
     await client.party.edit_and_keep(partial(client.party.set_privacy, privacy=fortnitepy.PartyPrivacy.PRIVATE))
-    await client.set_presence(status='https://www.github.com/BayGamerYT/Fortnite-Discord-RPC')
+    await client.set_presence(status='Fortnite Discord RPC', away=fortnitepy.AwayStatus.AWAY)
 
     flag = False
     for friend in client.friends:
@@ -98,6 +101,7 @@ async def event_ready():
                 break
 
     client.loop.create_task(check_user_online())
+    client.loop.create_task(check_update())
     
 
 @client.event
@@ -131,6 +135,7 @@ async def event_friend_presence(before, after):
         except Exception as e:
             log(f'{e}', 'error')
 
+exc = ['Client ID is Invalid']
 
 async def update_rpc(presence):
 
@@ -139,6 +144,8 @@ async def update_rpc(presence):
             await RPC.clear()
         except Exception as e:
             log(f'Failed to clear RPC: {e}', 'error')
+            if e in exc:
+                client.loop.create_task(try_to_connect_rpc())
 
     else:
         if presence.status != None:
@@ -154,6 +161,8 @@ async def update_rpc(presence):
                 )
             except Exception as e:
                 log(f'Failed to update RPC: {e}', 'error')
+                if e in exc:
+                    client.loop.create_task(try_to_connect_rpc())
 
 async def check_user_online():
 
@@ -201,6 +210,59 @@ async def try_to_connect_rpc():
             await asyncio.sleep(5)
 
     log('Reconnect RPC loop task finished', 'debug')
+
+
+async def check_update():
+
+    log('Checking updates...', 'info')
+
+    files_to_check = ['main.py', 'requirements.txt', 'install.bat', 'start.bat', 'README.md', 'LICENSE']
+    files_with_changes = []
+
+    url = 'https://raw.githubusercontent.com/BayGamerYT/Fortnite-Discord-RPC/main/'
+
+    for file in files_to_check:
+
+        local = open(file, 'r', encoding='utf-8')
+        request = requests.get(f'{url}{file}')
+
+        if request.status_code == 200:
+
+            if local.read() != request.text:
+                files_with_changes.append(file)
+        
+        local.close()
+        
+    if files_with_changes != []:
+
+        log('An update is available', 'warn')
+
+        ask = pyautogui.confirm(
+            title = 'Fortnite Discord RPC',
+            text = f'An update is available. Files with changes: {"".join(f"{x} "for x in files_with_changes)}',
+            buttons = ['Update', 'Later']
+        )
+
+        if ask == 'Update':
+
+            for file in files_to_check:
+
+                local = open(file, 'w', encoding='utf-8')
+                request = requests.get(f'{url}{file}')
+
+                if request.status_code == 200:
+
+                    local.write(request.text)
+
+                local.close()
+
+            log('Restarting...', 'info')
+            if sys.platform == 'win32':
+                os.system('py -3 -m pip install -r requirements.txt\npy main.py')
+                sys.exit()
+            else:
+                os.system('python3 -m pip install -r requirements.txt\n python3 main.py')
+                sys.exit()
 
 
 if __name__ == "__main__":
