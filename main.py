@@ -212,9 +212,7 @@ async def try_to_connect_rpc():
     log('Reconnect RPC loop task finished', 'debug')
 
 
-async def check_update():
-
-    log('Checking for updates...', 'info')
+def check_update():
 
     files_to_check = ['main.py', 'requirements.txt', 'install.bat', 'start.bat', 'README.md', 'LICENSE']
     files_with_changes = []
@@ -259,21 +257,19 @@ async def check_update():
             log('Restarting...', 'info')
             if sys.platform == 'win32':
                 os.system('py -3 -m pip install -r requirements.txt\npy main.py')
-                await asyncio.sleep(3)
+                time.sleep(3)
                 sys.exit()
             else:
-                os.system('python3 -m pip install -r requirements.txt\n python3 main.py')
-                await asyncio.sleep(3)
+                os.system('python3 -m pip install -r requirements.txt\npython3 main.py')
+                time.sleep(3)
                 sys.exit()
-                
-    else:
-        log('No updates found', 'info')
 
 
 if __name__ == "__main__":
     print(crayons.white('Fortnite Discord RPC', bold=True))
     print(crayons.white('Made by BayGamerYT\n'))
     try:
+        check_update()
         log('Starting fortnitepy client', 'debug')
         loop = asyncio.get_event_loop()
         loop.create_task(client.start())
