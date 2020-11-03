@@ -101,7 +101,6 @@ async def event_ready():
                 break
 
     client.loop.create_task(check_user_online())
-    client.loop.create_task(check_update())
     
 
 @client.event
@@ -256,12 +255,18 @@ def check_update():
 
             log('Restarting...', 'info')
             if sys.platform == 'win32':
-                os.system('py -3 -m pip install -r requirements.txt\npy main.py')
-                time.sleep(3)
+                if 'requirements.txt' in files_with_changes:
+                    os.system('py -3 -m pip install -r requirements.txt\npy main.py')
+                    time.sleep(3)
+                else:
+                    os.system('py main.py')
                 sys.exit()
             else:
-                os.system('python3 -m pip install -r requirements.txt\npython3 main.py')
-                time.sleep(3)
+                if 'requirements.txt' in files_with_changes:
+                    os.system('python3 -m pip install -r requirements.txt\npython3 main.py')
+                    time.sleep(3)
+                else:
+                    os.system('python3 main.py')
                 sys.exit()
 
 
