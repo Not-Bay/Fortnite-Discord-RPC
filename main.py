@@ -1,3 +1,5 @@
+from sys import platform
+from fortnitepy.enums import Platform
 from pypresence import AioPresence
 from functools import partial
 import requests
@@ -151,7 +153,7 @@ async def update_rpc(presence):
             try:
                 await RPC.update(
                     details = presence.status,
-                    state = 'Windows' if presence.platform == fortnitepy.Platform.WINDOWS else 'Mac' if presence.platform == fortnitepy.Platform.MAC else 'PlayStation 4' if presence.platform == fortnitepy.Platform.PLAYSTATION else 'Xbox' if presence.platform == fortnitepy.Platform.XBOX else 'Nintendo Switch' if presence.platform == fortnitepy.Platform.SWITCH else 'iOS' if presence.platform == fortnitepy.Platform.IOS else 'Android' if presence.platform == fortnitepy.Platform.ANDROID else None,
+                    state = 'Windows' if presence.platform == fortnitepy.Platform.WINDOWS else 'Mac' if presence.platform == fortnitepy.Platform.MAC else 'PlayStation 4' if presence.platform == fortnitepy.Platform.PLAYSTATION else 'Xbox' if presence.platform == fortnitepy.Platform.XBOX else 'Nintendo Switch' if presence.platform == fortnitepy.Platform.SWITCH else 'iOS' if presence.platform == fortnitepy.Platform.IOS else 'Android' if presence.platform == fortnitepy.Platform.ANDROID else 'PlayStation 5' if presence.platform == fortnitepy.Platform.PLAYSTATION_5 else 'Xbox Series X' if presence.platform == fortnitepy.platform.XBOX_X else None,
                     start = userdata.playing_timestamp,
                     large_image = 'fortnite_icon',
                     large_text = 'Fortnite Discord RPC',
