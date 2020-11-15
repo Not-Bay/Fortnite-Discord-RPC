@@ -1,5 +1,4 @@
 from sys import platform
-from fortnitepy.enums import Platform
 from pypresence import AioPresence
 from functools import partial
 import requests
@@ -157,8 +156,8 @@ async def update_rpc(presence):
                     start = userdata.playing_timestamp,
                     large_image = 'fortnite_icon',
                     large_text = 'Fortnite Discord RPC',
-                    party_id = presence.party.id if presence.party != None else None,
-                    join = presence.session_id if presence.joinable == True else None
+                    party_id = presence.party.id if presence.party.private == False else None,
+                    join = presence.session_id if presence.party.private == False else None
                 )
             except Exception as e:
                 log(f'Failed to update RPC: {e}', 'error')
