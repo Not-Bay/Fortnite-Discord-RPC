@@ -19,7 +19,7 @@ https://www.python.org/downloads
 Run `install.bat`
 
 * Other:
-Run the command `pip -3 install -r requirements.txt`
+Run the command `python3 -m pip install -r requirements.txt`
 
 **Make an epic account to monitore your status**
 For this step you can use an unused epic account

@@ -1,6 +1,5 @@
-from sys import platform
-from pypresence import AioPresence
 from functools import partial
+import pypresence
 import requests
 import pyautogui
 import datetime
@@ -24,7 +23,7 @@ class data():
 userdata = data()
 
 client_id = '770037031773798410'
-RPC = AioPresence(client_id=client_id, loop=asyncio.get_event_loop())
+RPC = pypresence.AioPresence(client_id=client_id, loop=asyncio.get_event_loop())
 
 def log(content, mode):
 
@@ -67,7 +66,7 @@ client = fortnitepy.Client(
 async def event_device_auth_generate(details, email):
 
     with open('device_auths.json', 'w', encoding='utf-8') as fw:
-        auths = json.dump(details, fw, indent=4)
+        json.dump(details, fw, indent=4)
     log('Device auths generated and saved', 'debug')
 
 @client.event
@@ -135,7 +134,6 @@ async def event_friend_presence(before, after):
         except Exception as e:
             log(f'{e}', 'error')
 
-exc = ['Client ID is Invalid']
 
 async def update_rpc(presence):
 
@@ -144,8 +142,13 @@ async def update_rpc(presence):
             await RPC.clear()
         except Exception as e:
             log(f'Failed to clear RPC: {e}', 'error')
-            if e in exc:
-                client.loop.create_task(try_to_connect_rpc())
+
+            if isinstance(e, pypresence.InvalidID):
+                    asyncio.create_task(try_to_connect_rpc())
+
+            elif isinstance(e, pypresence.InvalidPipe):
+                asyncio.create_task(try_to_connect_rpc())
+            
 
     else:
         if presence.status != None:
@@ -161,8 +164,14 @@ async def update_rpc(presence):
                 )
             except Exception as e:
                 log(f'Failed to update RPC: {e}', 'error')
-                if e in exc:
-                    client.loop.create_task(try_to_connect_rpc())
+
+                if isinstance(e, pypresence.InvalidID):
+                    asyncio.create_task(try_to_connect_rpc())
+
+                elif isinstance(e, pypresence.InvalidPipe):
+                    asyncio.create_task(try_to_connect_rpc())
+
+                
 
 async def check_user_online():
 
@@ -177,6 +186,7 @@ async def check_user_online():
             for friend in client.friends:
                 if friend.display_name == settings['Owner']:
                     flag = True
+                    log('User online task finished', 'debug')
                     break
             if flag == False:
                 await asyncio.sleep(3)
@@ -194,7 +204,6 @@ async def check_user_online():
                 userdata.before_online = False
 
             await asyncio.sleep(5)
-    log('User online task finished', 'debug')
 
 async def try_to_connect_rpc():
 
@@ -255,20 +264,13 @@ def check_update():
                 local.close()
 
             log('Restarting...', 'info')
-            if sys.platform == 'win32':
-                if 'requirements.txt' in files_with_changes:
-                    os.system('py -3 -m pip install -r requirements.txt\npy main.py')
-                    time.sleep(3)
-                else:
-                    os.system('py main.py')
-                sys.exit()
+
+            if 'requirements.txt' in files_with_changes:
+                os.system(f'{"python3" if sys.platform != "win32" else "py -3"} -m pip install -r requirements.txt\n{"python3" if sys.platform != "win32" else "py"} main.py')
+                time.sleep(3)
             else:
-                if 'requirements.txt' in files_with_changes:
-                    os.system('python3 -m pip install -r requirements.txt\npython3 main.py')
-                    time.sleep(3)
-                else:
-                    os.system('python3 main.py')
-                sys.exit()
+                os.system(f'{"python3" if sys.platform != "win32" else "py"} main.py')
+            sys.exit()
 
 
 if __name__ == "__main__":
