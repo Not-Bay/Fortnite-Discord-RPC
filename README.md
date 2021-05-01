@@ -55,6 +55,6 @@ Now you will have your RPC ready, as long as you do not close your desktop disco
 
 ---
 
-If you need help add me as friend on discord: `BayGamerYT#0001`
+If you need help add me as friend on discord: `Bay#8172`
 
 #### Use code BayGamerJJ in the item shop to support me <3 #EpicPartner
