@@ -35,16 +35,18 @@ Run the command `python3 main.py`
 
 **Setup**
 
-The first time you start the program you will be prompted to etner your epic games display name and log in to the account to be used to monitor your status.
+The first time you start the program you will be prompted to enter your epic games display name and log in to the account to be used to monitor your status.
 You only have to wait for a text like this to appear:
 ```
 Log in to https://epicgames.com/activate?userCode=1A2B3C4 with the account to be used as a monitor.
 ```
 If your web browser doesn't open automically in that link do it manually.
-Just click `Confirm` button.
+Then click `Confirm` button.
 
 It is very important that you check that you **are not** logged in with your main account. You can use this button on the page to change your account:
+
 ![change account button](https://media.discordapp.net/attachments/838192486547324938/838195565614333973/device_code_changeacc.png)
+
 
 **Add the monitor account as friend**
 
@@ -52,7 +54,7 @@ You may get a message indicating that you are not a friend of the bot. This mean
 
 **Ready!**
 
-Now you will have your RPC ready, as long as you do not close your desktop discord and you have the program open! Enjoy
+Now you will have your RPC ready, as long as you do not close your discord and you have the program open! Enjoy
 
 **Note**
 There is a possibility that the credentials of the monitor account may be invalid unexpectedly. In that case you will just have to restart and perform the authentication again.
