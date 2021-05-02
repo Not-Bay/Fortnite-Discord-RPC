@@ -1,15 +1,173 @@
 from functools import partial
-import pypresence
-import requests
-import pyautogui
-import datetime
-import time
-import crayons
 import fortnitepy
+import pypresence
+import webbrowser
+import pyautogui
+import requests
+import datetime
+import crayons
 import asyncio
+import time
 import json
 import sys 
 import os
+
+class Auth:
+    def __init__(self):
+
+        self.IOS_TOKEN = "MzQ0NmNkNzI2OTRjNGE0NDg1ZDgxYjc3YWRiYjIxNDE6OTIwOWQ0YTVlMjVhNDU3ZmI5YjA3NDg5ZDMxM2I0MWE="
+        self.SWITCH_TOKEN = "NTIyOWRjZDNhYzM4NDUyMDhiNDk2NjQ5MDkyZjI1MWI6ZTNiZDJkM2UtYmY4Yy00ODU3LTllN2QtZjNkOTQ3ZDIyMGM3"
+        self.DAUNTLESS_TOKEN = "YjA3MGYyMDcyOWY4NDY5M2I1ZDYyMWM5MDRmYzViYzI6SEdAWEUmVEdDeEVKc2dUIyZfcDJdPWFSbyN+Pj0+K2M2UGhSKXpYUA=="
+
+        self.ACCOUNT_PUBLIC_SERVICE = "https://account-public-service-prod03.ol.epicgames.com"
+        self.OAUTH_TOKEN = f"{self.ACCOUNT_PUBLIC_SERVICE}/account/api/oauth/token"
+        self.EXCHANGE = f"{self.ACCOUNT_PUBLIC_SERVICE}/account/api/oauth/exchange"
+        self.DEVICE_CODE = f"{self.ACCOUNT_PUBLIC_SERVICE}/account/api/oauth/deviceAuthorization"
+        self.DEVICE_AUTH_GENERATE = f"{self.ACCOUNT_PUBLIC_SERVICE}/account/api/public/account/" + "{account_id}/deviceAuth"
+
+    def HTTPRequest(self, url: str, headers = None, data = None, method = None):
+
+        if method == 'GET':
+            response = requests.get(url, headers=headers, data=data)
+        elif method == 'POST':
+            response = requests.post(url, headers=headers, data=data)
+        elif method == 'DELETE':
+            response = requests.delete(url, headers=headers, data=data)
+
+        return response
+
+    def get(self, url, headers=None, data=None):
+        return self.HTTPRequest(url, headers, data, 'GET')
+
+    def post(self, url, headers=None, data=None):
+        return self.HTTPRequest(url, headers, data, 'POST')
+
+    def delete(self, url, headers=None, data=None):
+        return self.HTTPRequest(url, headers, data, 'DELETE')
+
+    
+    async def fetch_client_credentials(self):
+
+        headers = {
+            "Authorization": f"basic {self.DAUNTLESS_TOKEN}",
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+        data = {
+            "grant_type": "client_credentials",
+            "token_type": "eg1"
+        }
+        response = self.post(self.OAUTH_TOKEN, headers=headers, data=data)
+
+        return response.json()
+
+    async def get_device_code_session(self, credentials: dict):
+
+        headers = {
+            "Authorization": f"bearer {credentials['access_token']}",
+        }
+        data = {
+            "prompt": "login"
+        }
+        response = self.post(self.DEVICE_CODE, headers=headers, data=data)
+
+        return response.json()
+
+    async def device_code_auth(self, device_code: dict):
+
+        headers = {
+            "Authorization": f"basic {self.SWITCH_TOKEN}",
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+        data = {
+            "grant_type": "device_code",
+            "device_code": device_code['device_code']
+        }
+        response = self.post(self.OAUTH_TOKEN, headers=headers, data=data)
+
+        return response.json()
+
+    async def get_exchange_code(self, credentials: dict):
+
+        headers = {
+            "Authorization": f"bearer {credentials['access_token']}"
+        }
+        response = self.get(self.EXCHANGE, headers)
+
+        return response.json()
+
+    async def exchange_code_auth(self, exchange_code: dict):
+
+        headers = {
+            "Authorization": f"basic {self.IOS_TOKEN}",
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+        data = {
+            "grant_type": "exchange_code",
+            "exchange_code": exchange_code['code']
+        }
+        response = self.post(self.OAUTH_TOKEN, headers, data)
+
+        return response.json()
+
+    async def generate_device_auths(self, auth_session: dict):
+
+        headers = {
+            "Authorization": f"bearer {auth_session['access_token']}"
+        }
+        response = self.post(self.DEVICE_AUTH_GENERATE.format(account_id=auth_session['account_id']), headers)
+
+        return response.json()
+
+    async def get_account_by_user_id(self, user_id: str, credentials: dict):
+
+        headers = {
+            "Authorization": f"bearer {credentials['access_token']}"
+        }
+        response = self.get(self.ACCOUNT_BY_USER_ID.format(user_id=user_id), headers)
+
+        return response.json()
+
+
+    async def pre_authenticate(self):
+
+        client_credentials = await self.fetch_client_credentials()
+        if 'errorCode' in client_credentials:
+            return False, client_credentials
+        else:
+            device_code_session = await self.get_device_code_session(client_credentials)
+            if 'errorCode' in device_code_session:
+                return False, device_code_session
+            else:
+                return True, device_code_session
+
+    async def authenticate(self, devicecodesession: dict):
+
+        while True:
+            device_code_result = await self.device_code_auth(devicecodesession)
+
+            if 'errorCode' in device_code_result:
+                if device_code_result['errorCode'] == 'errors.com.epicgames.account.oauth.authorization_pending':
+                    await asyncio.sleep(devicecodesession['interval'])
+                    continue
+                elif device_code_result['errorCode'] == 'errors.com.epicgames.not_found':
+                    log(f'Canceled due to device code expiration: {crayons.magenta(device_code_result)}', 'error')
+                    return False, device_code_result
+            else:
+                break
+
+        exchange_code = await self.get_exchange_code(device_code_result)
+        if 'errorCode' in exchange_code:
+            return False, exchange_code
+        else:
+            final_auth_session = await self.exchange_code_auth(exchange_code)
+            if 'errorCode' in final_auth_session:
+                return False, final_auth_session
+            else:
+                device_auths = await self.generate_device_auths(final_auth_session)
+                if 'errorCode' in device_auths:
+                    return False, device_auths
+                else:
+                    return True, {"device_id": device_auths['deviceId'], "account_id": device_auths['accountId'], "secret": device_auths['secret']}
 
 class data():
     def __init__(self):
@@ -22,7 +180,7 @@ class data():
 
 userdata = data()
 
-client_id = '770037031773798410'
+client_id = '770037031773798410' # dont change this unless you know what are u doing
 RPC = pypresence.AioPresence(client_id=client_id, loop=asyncio.get_event_loop())
 
 def log(content, mode):
@@ -54,20 +212,12 @@ with open('settings.json', 'r', encoding='utf-8') as s:
 
 
 client = fortnitepy.Client(
-    auth=fortnitepy.AdvancedAuth(
-        device_id=auths['device_id'],
-        account_id=auths['account_id'],
-        secret=auths['secret'],
-        prompt_authorization_code=True
+    auth=fortnitepy.DeviceAuth(
+        device_id=auths['device_id'], 
+        account_id=auths['account_id'], 
+        secret=auths['secret']
     )
 )
-
-@client.event
-async def event_device_auth_generate(details, email):
-
-    with open('device_auths.json', 'w', encoding='utf-8') as fw:
-        json.dump(details, fw, indent=4)
-    log('Device auths generated and saved', 'debug')
 
 @client.event
 async def event_ready():
@@ -133,6 +283,8 @@ async def event_friend_presence(before, after):
             await update_rpc(after)
         except Exception as e:
             log(f'{e}', 'error')
+            if config['debug']:
+                raise e
 
 
 async def update_rpc(presence):
@@ -144,10 +296,14 @@ async def update_rpc(presence):
             log(f'Failed to clear RPC: {e}', 'error')
 
             if isinstance(e, pypresence.InvalidID):
-                    asyncio.create_task(try_to_connect_rpc())
+                asyncio.create_task(try_to_connect_rpc())
 
             elif isinstance(e, pypresence.InvalidPipe):
                 asyncio.create_task(try_to_connect_rpc())
+            
+            else:
+                if settings['debug']:
+                    raise e
             
 
     else:
@@ -170,6 +326,10 @@ async def update_rpc(presence):
 
                 elif isinstance(e, pypresence.InvalidPipe):
                     asyncio.create_task(try_to_connect_rpc())
+
+                else:
+                    if settings['debug']:
+                        raise e
 
                 
 
@@ -223,17 +383,29 @@ async def try_to_connect_rpc():
 
 def check_update():
 
+    if '--noupdatecheck' in sys.argv:
+        return
+
     files_to_check = ['main.py', 'requirements.txt', 'install.bat', 'start.bat', 'README.md', 'LICENSE']
     files_with_changes = []
 
     url = 'https://raw.githubusercontent.com/BayGamerYT/Fortnite-Discord-RPC/main/'
 
     for file in files_to_check:
+        not_found = False
+        try:
+            local = open(file, 'r', encoding='utf-8')
+        except FileNotFoundError:
+            not_found = True
 
-        local = open(file, 'r', encoding='utf-8')
         request = requests.get(f'{url}{file}')
 
         if request.status_code == 200:
+
+            if not_found == True:
+                with open(file, 'w', encoding='utf-8') as f:
+                    f.write(request.text)
+                continue
 
             if local.read() != request.text:
                 files_with_changes.append(file)
@@ -244,9 +416,13 @@ def check_update():
 
         log('An update is available', 'warn')
 
+        files_with_changes_str = ''
+        for i in files_with_changes:
+            files_with_changes_str += i + ' '
+
         ask = pyautogui.confirm(
             title = 'Fortnite Discord RPC',
-            text = f'An update is available. Files with changes: {"".join(f"{x} "for x in files_with_changes)}',
+            text = f'An update is available. Files with changes: {files_with_changes_str}',
             buttons = ['Update', 'Later']
         )
 
@@ -265,23 +441,99 @@ def check_update():
 
             log('Restarting...', 'info')
 
+            del sys.argv[0]
+            args_str = ''
+            for arg in sys.argv:
+                args_str += f' {arg}'
+
             if 'requirements.txt' in files_with_changes:
-                os.system(f'{"python3" if sys.platform != "win32" else "py -3"} -m pip install -r requirements.txt\n{"python3" if sys.platform != "win32" else "py"} main.py')
+                os.system(f'{"python3" if sys.platform != "win32" else "py -3"} -m pip install -r requirements.txt\n{"python3" if sys.platform != "win32" else "py"} main.py --isRestart {args_str}')
                 time.sleep(3)
             else:
-                os.system(f'{"python3" if sys.platform != "win32" else "py"} main.py')
+                os.system(f'{"python3" if sys.platform != "win32" else "py"} main.py --isRestart {args_str}')
             sys.exit()
 
 
 if __name__ == "__main__":
-    print(crayons.white('Fortnite Discord RPC', bold=True))
-    print(crayons.white('Made by BayGamerYT\n'))
+    if '--isRestart' in sys.argv:
+        print('\n')
+        log('Restart completed', 'info')
+    else:
+        print(crayons.white('Fortnite Discord RPC', bold=True))
+        print(crayons.white('Made by BayGamerYT\n'))
     try:
-        check_update()
-        log('Starting fortnitepy client', 'debug')
+        if '--isRestart' not in sys.argv:
+            check_update()
+
+        if settings['Owner'] == "":
+            log('Owner field in settings are default, asking user for his epic games id', 'debug')
+
+            user_display_name = pyautogui.prompt(
+                title = 'Fortnite Discord RPC',
+                text = f'Enter your epic games display name'
+            )
+
+            if user_display_name != None:
+
+                settings['Owner'] = user_display_name
+                with open('settings.json', 'w', encoding='utf-8') as f:
+                    json.dump(settings, f, indent=4, ensure_ascii=False)
+
+        if auths == {"device_id": "", "account_id": "", "secret": ""}:
+
+            log('The device_auths.json file contains nothing. Starting initial authentication', 'debug')
+            device_code = Auth()
+            device_code_session = asyncio.run(device_code.pre_authenticate())
+
+            if device_code_session[0] == True:
+                log('Authentication required', 'warn')
+                log(f'Log in to {device_code_session[1]["verification_uri_complete"]} with the account to be used as a monitor.', 'info')
+                try:
+                    webbrowser.open(url=device_code_session[1]["verification_uri_complete"])
+                    log('Web browser opened in login page', 'info')
+                except:
+                    pass
+
+                final_auth = asyncio.run(device_code.authenticate(device_code_session[1]))
+                
+                if final_auth[0] == True:
+                    newauths = final_auth[1]
+                    with open('device_auths.json', 'w', encoding='utf-8') as f:
+                        json.dump(newauths, f, indent=4)
+
+                    del sys.argv[0]
+                    args_str = ''
+                    for arg in sys.argv:
+                        args_str += f' {arg}'
+    
+                    log('Restarting...', 'info')
+                    os.system(f'{"python3" if sys.platform != "win32" else "py"} main.py --isRestart {args_str}')
+                    sys.exit()
+
+                else:
+                    log(f'An error occurred during authentication: {crayons.red(final_auth[1])}', 'error')
+                    sys.exit()
+            else:
+                log(f'An error occurred during authentication, it was not possible to obtain the device code session: {crayons.red(device_code_session[1])}', 'error')
+                sys.exit()
+
         loop = asyncio.get_event_loop()
-        loop.create_task(client.start())
-        loop.run_forever()
+
+        log(f'Monitoring account: "{settings["Owner"]}"', 'info')
+
+        log('Starting fortnitepy client', 'debug')
+        start_task = loop.run_until_complete(client.start())
+
+        if isinstance(start_task.exception(), fortnitepy.errors.AuthException):
+
+            log(f'An authentication error occurred while trying to start the client.: {crayons.red(start_task.exception())}', 'error')
+
+            with open('device_auths.json', 'w', encoding='utf-8') as f:
+                json.dump({"device_id": "", "account_id": "", "secret": ""}, f, indent=4)
+
+            log('Old device auths deleted, restarting...', 'info')
+
+            
     except KeyboardInterrupt:
         log('Keyboard interruption', 'info')
         log('Disconnected', 'rpc')
