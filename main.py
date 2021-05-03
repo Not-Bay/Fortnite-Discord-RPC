@@ -283,7 +283,7 @@ async def event_friend_presence(before, after):
             await update_rpc(after)
         except Exception as e:
             log(f'{e}', 'error')
-            if config['debug']:
+            if settings['debug']:
                 raise e
 
 
