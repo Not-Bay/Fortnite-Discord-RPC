@@ -1,8 +1,7 @@
 
 ## Fortnite Discord RPC
 
-An unofficial rich presence that let you to have Fortnite RPC regardless of the platform on which you play. Made with pypresence and fortnitepy.
-Its needed a PC (obviously with discord installed) and an unused epic account (used to log in and monitore your status)
+An unofficial rich presence that let you to have Fortnite RPC regardless of the platform on which you play. Made with pypresence and fortnitepy
 
 ![preview](https://media.discordapp.net/attachments/838192486547324938/838206225325752340/unknown.png)
 
@@ -13,6 +12,7 @@ Its needed a PC (obviously with discord installed) and an unused epic account (u
 
 **Install Python 3.7/3.8:**
 https://www.python.org/downloads
+Make sure `tcl/tk and IDLE` is enabled before installing
 
 **Install required packages:**
 * Windows:
@@ -40,10 +40,9 @@ You only have to wait for a text like this to appear:
 ```
 Log in to https://epicgames.com/activate?userCode=1A2B3C4 with the account to be used as a monitor.
 ```
-If your web browser doesn't open automically in that link do it manually.
-Then click `Confirm` button.
+Open that link in your browser and click on `Allow` or `Confirm`
 
-It is very important that you check that you **are not** logged in with your main account. You can use this button on the page to change your account:
+**It is very important that you check that you are not logged in with your main account. You can use this button on the page to change your account:**
 
 ![change account button](https://media.discordapp.net/attachments/838192486547324938/838195565614333973/device_code_changeacc.png)
 
