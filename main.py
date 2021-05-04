@@ -1,7 +1,6 @@
 from functools import partial
 import fortnitepy
 import pypresence
-import webbrowser
 import pyautogui
 import requests
 import datetime
@@ -309,9 +308,10 @@ async def update_rpc(presence):
     else:
         if presence.status != None:
             try:
+                platform_str = get_platform_str(presence.platform)
                 await RPC.update(
                     details = presence.status,
-                    state = 'Windows' if presence.platform == fortnitepy.Platform.WINDOWS else 'Mac' if presence.platform == fortnitepy.Platform.MAC else 'PlayStation 4' if presence.platform == fortnitepy.Platform.PLAYSTATION else 'Xbox' if presence.platform == fortnitepy.Platform.XBOX else 'Nintendo Switch' if presence.platform == fortnitepy.Platform.SWITCH else 'iOS' if presence.platform == fortnitepy.Platform.IOS else 'Android' if presence.platform == fortnitepy.Platform.ANDROID else 'PlayStation 5' if presence.platform == fortnitepy.Platform.PLAYSTATION_5 else 'Xbox Series X' if presence.platform == fortnitepy.platform.XBOX_X else None,
+                    state = platform_str if platform_str != False else None,
                     start = userdata.playing_timestamp,
                     large_image = 'fortnite_icon',
                     large_text = 'Fortnite Discord RPC',
@@ -379,6 +379,39 @@ async def try_to_connect_rpc():
             await asyncio.sleep(5)
 
     log('Reconnect RPC loop task finished', 'debug')
+
+
+def get_platform_str(platform: fortnitepy.Platform):
+
+    if platform == fortnitepy.Platform.ANDROID:
+        return 'Android'
+
+    elif platform == fortnitepy.Platform.IOS:
+        return 'IOS'
+
+    elif platform == fortnitepy.Platform.MAC:
+        return 'Mac'
+
+    elif platform == fortnitepy.Platform.PLAYSTATION_4:
+        return 'PlayStation 4'
+
+    elif platform == fortnitepy.Platform.PLAYSTATION_5:
+        return 'PlayStation 5'
+
+    elif platform == fortnitepy.Platform.SWITCH:
+        return 'Nintendo Switch'
+
+    elif platform == fortnitepy.Platform.WINDOWS:
+        return 'Windows'
+
+    elif platform == fortnitepy.Platform.XBOX_ONE:
+        return 'Xbox One'
+
+    elif platform == fortnitepy.Platform.XBOX_X:
+        return 'Xbox Series X'
+
+    else:
+        return False
 
 
 def check_update():
@@ -488,11 +521,6 @@ if __name__ == "__main__":
             if device_code_session[0] == True:
                 log('Authentication required', 'warn')
                 log(f'Log in to {device_code_session[1]["verification_uri_complete"]} with the account to be used as a monitor.', 'info')
-                try:
-                    webbrowser.open(url=device_code_session[1]["verification_uri_complete"])
-                    log('Web browser opened in login page', 'info')
-                except:
-                    pass
 
                 final_auth = asyncio.run(device_code.authenticate(device_code_session[1]))
                 
