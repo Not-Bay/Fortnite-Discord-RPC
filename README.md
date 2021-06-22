@@ -38,13 +38,18 @@ Run the command `python3 main.py`
 The first time you start the program you will be prompted to enter your epic games display name and log in to the account to be used to monitor your status.
 You only have to wait for a text like this to appear:
 ```
-Log in to https://epicgames.com/activate?userCode=1A2B3C4 with the account to be used as a monitor.
+Login to https://www.epicgames.com/id/login?redirectUrl=https%3A%2F%2Fwww.epicgames.com%2Fid%2Fapi%2Fredirect%3FclientId%3D3446cd72694c4a4485d81b77adbb2141%26responseType%3Dcode and paste the response:
 ```
-Open that link in your browser and click on `Allow` or `Confirm`
+Open that link in your browser, login with the bot account **NOT YOUR MAIN**.
+You will see a text like this:
+![Text example](https://media.discordapp.net/attachments/838192486547324938/856967743471747072/unknown.png)
 
-**It is very important that you check that you are not logged in with your main account. You can use this button on the page to change your account:**
+Copy all and paste it in the console
+![Paste example](https://media.discordapp.net/attachments/838192486547324938/856968391041220638/unknown.png)
 
-![change account button](https://media.discordapp.net/attachments/838192486547324938/838195565614333973/device_code_changeacc.png)
+Hit enter and if you did it correctly and the code didn't expire yet you are ready!
+
+If for some reason you get an error saying that the code is not valid just refresh the page where you got the data and copy all again.
 
 
 **Add the monitor account as friend**
@@ -55,12 +60,23 @@ You may get a message indicating that you are not a friend of the bot. This mean
 
 Now you will have your RPC ready, as long as you do not close your discord and you have the program open! Enjoy
 
-**Note**
-There is a possibility that the credentials of the monitor account may be invalid unexpectedly. In that case you will just have to restart and perform the authentication again.
 
+**Command line arguments**
+
+Just some command line arguments that can be usefull for you:
+
+```
+--delete-device-auth | Deletes created device auth (You will need to do authentication again after this)
+--no-update-check | Skips the update check
+```
+
+
+**Note**
+
+There is a possibility that the credentials of the monitor account may be invalid unexpectedly. In that case you will just have to restart and perform the authentication again.
 
 ---
 
-If you need help you can send me a private message on twitter `@CodeBayGamerJJ` or add me as a friend on Discord `Bay#8172`
+If you need help you can send me a private message on twitter `@CodeBayGamerJJ` or add me as a friend on Discord `Bay#7210`
 
 #### Use code BayGamerJJ in the item shop to support me <3 #EpicPartner

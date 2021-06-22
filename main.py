@@ -1,5 +1,6 @@
 from functools import partial
 import fortnitepy
+from fortnitepy import auth
 import pypresence
 import pyautogui
 import requests
@@ -15,23 +16,24 @@ class Auth:
     def __init__(self):
 
         self.IOS_TOKEN = "MzQ0NmNkNzI2OTRjNGE0NDg1ZDgxYjc3YWRiYjIxNDE6OTIwOWQ0YTVlMjVhNDU3ZmI5YjA3NDg5ZDMxM2I0MWE="
-        self.SWITCH_TOKEN = "NTIyOWRjZDNhYzM4NDUyMDhiNDk2NjQ5MDkyZjI1MWI6ZTNiZDJkM2UtYmY4Yy00ODU3LTllN2QtZjNkOTQ3ZDIyMGM3"
-        self.DAUNTLESS_TOKEN = "YjA3MGYyMDcyOWY4NDY5M2I1ZDYyMWM5MDRmYzViYzI6SEdAWEUmVEdDeEVKc2dUIyZfcDJdPWFSbyN+Pj0+K2M2UGhSKXpYUA=="
 
         self.ACCOUNT_PUBLIC_SERVICE = "https://account-public-service-prod03.ol.epicgames.com"
         self.OAUTH_TOKEN = f"{self.ACCOUNT_PUBLIC_SERVICE}/account/api/oauth/token"
-        self.EXCHANGE = f"{self.ACCOUNT_PUBLIC_SERVICE}/account/api/oauth/exchange"
-        self.DEVICE_CODE = f"{self.ACCOUNT_PUBLIC_SERVICE}/account/api/oauth/deviceAuthorization"
         self.DEVICE_AUTH_GENERATE = f"{self.ACCOUNT_PUBLIC_SERVICE}/account/api/public/account/" + "{account_id}/deviceAuth"
+        self.DEVICE_AUTH_DELETE = f"{self.ACCOUNT_PUBLIC_SERVICE}/api/public/account/" + "{account_id}/deviceAuth/{device_id}"
+        self.KILL_AUTH_SESSION = f"{self.ACCOUNT_PUBLIC_SERVICE}/api/oauth/sessions/kill/" + "{access_token}"
 
     def HTTPRequest(self, url: str, headers = None, data = None, method = None):
 
         if method == 'GET':
             response = requests.get(url, headers=headers, data=data)
+            log(f'[GET] {crayons.magenta(url)} > {response.text}', 'debug')
         elif method == 'POST':
             response = requests.post(url, headers=headers, data=data)
+            log(f'[POST] {crayons.magenta(url)} > {response.text}', 'debug')
         elif method == 'DELETE':
             response = requests.delete(url, headers=headers, data=data)
+            log(f'[DELETE] {crayons.magenta(url)} > {response.text}', 'debug')
 
         return response
 
@@ -44,71 +46,38 @@ class Auth:
     def delete(self, url, headers=None, data=None):
         return self.HTTPRequest(url, headers, data, 'DELETE')
 
-    
-    async def fetch_client_credentials(self):
-
-        headers = {
-            "Authorization": f"basic {self.DAUNTLESS_TOKEN}",
-            "Content-Type": "application/x-www-form-urlencoded"
-        }
-        data = {
-            "grant_type": "client_credentials",
-            "token_type": "eg1"
-        }
-        response = self.post(self.OAUTH_TOKEN, headers=headers, data=data)
-
-        return response.json()
-
-    async def get_device_code_session(self, credentials: dict):
-
-        headers = {
-            "Authorization": f"bearer {credentials['access_token']}",
-        }
-        data = {
-            "prompt": "login"
-        }
-        response = self.post(self.DEVICE_CODE, headers=headers, data=data)
-
-        return response.json()
-
-    async def device_code_auth(self, device_code: dict):
-
-        headers = {
-            "Authorization": f"basic {self.SWITCH_TOKEN}",
-            "Content-Type": "application/x-www-form-urlencoded"
-        }
-        data = {
-            "grant_type": "device_code",
-            "device_code": device_code['device_code']
-        }
-        response = self.post(self.OAUTH_TOKEN, headers=headers, data=data)
-
-        return response.json()
-
-    async def get_exchange_code(self, credentials: dict):
-
-        headers = {
-            "Authorization": f"bearer {credentials['access_token']}"
-        }
-        response = self.get(self.EXCHANGE, headers)
-
-        return response.json()
-
-    async def exchange_code_auth(self, exchange_code: dict):
+    def authorization_code_authenticate(self, authorization_code: str):
 
         headers = {
             "Authorization": f"basic {self.IOS_TOKEN}",
             "Content-Type": "application/x-www-form-urlencoded"
         }
         data = {
-            "grant_type": "exchange_code",
-            "exchange_code": exchange_code['code']
+            "grant_type": "authorization_code",
+            "code": authorization_code
         }
         response = self.post(self.OAUTH_TOKEN, headers, data)
 
         return response.json()
 
-    async def generate_device_auths(self, auth_session: dict):
+    def device_auth_authenticate(self, device_auths):
+
+        headers = {
+            "Authorization": f"basic {self.IOS_TOKEN}",
+            "Content-Type": "application/x-www-form-urlencoded"
+        }
+        data = {
+            "grant_type": "device_auth",
+            "device_id": device_auths['device_id'],
+            "account_id": device_auths['account_id'],
+            "secret": device_auths['secret']
+        }
+
+        response = self.post(self.OAUTH_TOKEN, headers=headers, data=data)
+
+        return response.json()
+
+    def generate_device_auths(self, auth_session: dict):
 
         headers = {
             "Authorization": f"bearer {auth_session['access_token']}"
@@ -117,56 +86,23 @@ class Auth:
 
         return response.json()
 
-    async def get_account_by_user_id(self, user_id: str, credentials: dict):
+    def kill_auth_session(self, credentials: dict):
 
         headers = {
             "Authorization": f"bearer {credentials['access_token']}"
         }
-        response = self.get(self.ACCOUNT_BY_USER_ID.format(user_id=user_id), headers)
+        response = self.delete(self.KILL_AUTH_SESSION.format(access_token=credentials['access_token']), headers)
 
-        return response.json()
+        return response
 
+    def delete_device_auths(self, device_auths: dict, auth_session: dict):
 
-    async def pre_authenticate(self):
+        headers = {
+            "Authorization": f"bearer {auth_session['access_token']}"
+        }
+        response = self.delete(self.DEVICE_AUTH_DELETE.format(account_id=device_auths['account_id'], device_id=device_auths['device_id']), headers)
 
-        client_credentials = await self.fetch_client_credentials()
-        if 'errorCode' in client_credentials:
-            return False, client_credentials
-        else:
-            device_code_session = await self.get_device_code_session(client_credentials)
-            if 'errorCode' in device_code_session:
-                return False, device_code_session
-            else:
-                return True, device_code_session
-
-    async def authenticate(self, devicecodesession: dict):
-
-        while True:
-            device_code_result = await self.device_code_auth(devicecodesession)
-
-            if 'errorCode' in device_code_result:
-                if device_code_result['errorCode'] == 'errors.com.epicgames.account.oauth.authorization_pending':
-                    await asyncio.sleep(devicecodesession['interval'])
-                    continue
-                elif device_code_result['errorCode'] == 'errors.com.epicgames.not_found':
-                    log(f'Canceled due to device code expiration: {crayons.magenta(device_code_result)}', 'error')
-                    return False, device_code_result
-            else:
-                break
-
-        exchange_code = await self.get_exchange_code(device_code_result)
-        if 'errorCode' in exchange_code:
-            return False, exchange_code
-        else:
-            final_auth_session = await self.exchange_code_auth(exchange_code)
-            if 'errorCode' in final_auth_session:
-                return False, final_auth_session
-            else:
-                device_auths = await self.generate_device_auths(final_auth_session)
-                if 'errorCode' in device_auths:
-                    return False, device_auths
-                else:
-                    return True, {"device_id": device_auths['deviceId'], "account_id": device_auths['accountId'], "secret": device_auths['secret']}
+        return response
 
 class data():
     def __init__(self):
@@ -416,7 +352,7 @@ def get_platform_str(platform: fortnitepy.Platform):
 
 def check_update():
 
-    if '--noupdatecheck' in sys.argv:
+    if '--no-update-check' in sys.argv:
         return
 
     files_to_check = ['main.py', 'requirements.txt', 'install.bat', 'start.bat', 'README.md', 'LICENSE']
@@ -488,6 +424,28 @@ def check_update():
 
 
 if __name__ == "__main__":
+
+    if '--delete-device-auth' in sys.argv:
+        log('Deleting saved device auth...', 'info')
+
+        device_auths = json.load(open('device_auths.json', 'r', encoding='utf-8'))
+
+        AUTH = Auth()
+        auth_session = AUTH.device_auth_authenticate(device_auths)
+        delete = AUTH.delete_device_auths(device_auths, auth_session)
+        if 'errorMessage' not in delete.text:
+            AUTH.kill_auth_session(auth_session)
+            with open('device_auths.json', 'w', encoding='utf-8') as f:
+                json.dump({"device_id": "", "account_id": "", "secret": ""}, f, indent=4)
+
+            log('Deleted saved device auth successfully!', 'info')
+            exit()
+        else:
+            error = delete.json()['errorMessage']
+            AUTH.kill_auth_session(auth_session)
+            log(f'An error ocurred deleting device auth: {error}')
+            exit()
+
     if '--isRestart' in sys.argv:
         print('\n')
         log('Restart completed', 'info')
@@ -514,36 +472,58 @@ if __name__ == "__main__":
 
         if auths == {"device_id": "", "account_id": "", "secret": ""}:
 
-            log('The device_auths.json file contains nothing. Starting initial authentication', 'debug')
-            device_code = Auth()
-            device_code_session = asyncio.run(device_code.pre_authenticate())
+            log('The device_auths.json file contains nothing', 'debug')
+            authorizationcode = Auth()
+            log('Authentication required', 'warn')
+            while True:
+                log('Login to https://www.epicgames.com/id/login?redirectUrl=https%3A%2F%2Fwww.epicgames.com%2Fid%2Fapi%2Fredirect%3FclientId%3D3446cd72694c4a4485d81b77adbb2141%26responseType%3Dcode and paste the response: ', 'info')
+                data = input('\n')
 
-            if device_code_session[0] == True:
-                log('Authentication required', 'warn')
-                log(f'Log in to {device_code_session[1]["verification_uri_complete"]} with the account to be used as a monitor.', 'info')
+                try:
+                    authorization_code_data = json.loads(data)
+                except Exception as e:
+                    log(f'An error ocurred processing the data: {e}. Refresh the page and try again', 'error')
+                    continue
 
-                final_auth = asyncio.run(device_code.authenticate(device_code_session[1]))
-                
-                if final_auth[0] == True:
-                    newauths = final_auth[1]
-                    with open('device_auths.json', 'w', encoding='utf-8') as f:
-                        json.dump(newauths, f, indent=4)
+                try:
+                    redirectUrl = authorization_code_data['redirectUrl']
+                    code = redirectUrl.replace('com.epicgames.fortnite://fnauth/?code=', '')
+                    auth_session = authorizationcode.authorization_code_authenticate(code)
 
-                    del sys.argv[0]
-                    args_str = ''
-                    for arg in sys.argv:
-                        args_str += f' {arg}'
-    
-                    log('Restarting...', 'info')
-                    os.system(f'{"python3" if sys.platform != "win32" else "py"} main.py --isRestart {args_str}')
-                    sys.exit()
+                    try:
+                        error = auth_session['errorMessage']
+                        log(f'Failed authentication: {error}', 'error')
+                        continue
+                    except:
+                        log('Authorization code worked. Creating device auth', 'debug')
+                        device_auths = authorizationcode.generate_device_auths(auth_session)
+                        
+                        try:
+                            error = device_auths['errorMessage']
+                            log(f'Failed device auth creation: {error}')
+                            authorizationcode.kill_auth_session(auth_session)
+                        except:
+                            data = {
+                                "device_id": device_auths['deviceId'],
+                                "account_id": device_auths['accountId'],
+                                "secret": device_auths['secret']
+                            }
+                            with open('device_auths.json', 'w', encoding='utf-8') as f:
+                                json.dump(data, f, indent=4)
+                            log('Authentication completed', 'debug')
+                            authorizationcode.kill_auth_session(auth_session)
+                            del sys.argv[0]
+                            args_str = ''
+                            for arg in sys.argv:
+                                args_str += f' {arg}'
+            
+                            log('Restarting...', 'info')
+                            os.system(f'{"python3" if sys.platform != "win32" else "py"} main.py --isRestart {args_str}')
+                            sys.exit()
 
-                else:
-                    log(f'An error occurred during authentication: {crayons.red(final_auth[1])}', 'error')
-                    sys.exit()
-            else:
-                log(f'An error occurred during authentication, it was not possible to obtain the device code session: {crayons.red(device_code_session[1])}', 'error')
-                sys.exit()
+                except Exception as e:
+                    log(f'An error ocurred during authentication: {e}', 'error')
+                    continue
 
         loop = asyncio.get_event_loop()
 
