@@ -1,5 +1,5 @@
 pypresence==4.2.0
-fortnitepy==3.5.0
+fortnitepy==3.6.4
 crayons==0.4.0
 requests==2.24.0
 pyautogui==0.9.52
